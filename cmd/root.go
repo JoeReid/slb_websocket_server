@@ -2,10 +2,10 @@ package cmd
 
 import (
 	"fmt"
-	"os"
-
+	log "github.com/Sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"os"
 )
 
 var cfgFile string
@@ -53,6 +53,27 @@ func initConfig() {
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
 		fmt.Println("Using config file:", viper.ConfigFileUsed())
+	}
+
+	initLogging()
+}
+
+func initLogging() {
+	level := viper.GetString("logging.level")
+
+	switch {
+	case level == "debug":
+		fmt.Println("setting logging to level:", level)
+		log.SetLevel(log.DebugLevel)
+	case level == "info":
+		fmt.Println("setting logging to level:", level)
+		log.SetLevel(log.InfoLevel)
+	case level == "warn":
+		fmt.Println("setting logging to level:", level)
+		log.SetLevel(log.WarnLevel)
+	case level == "error":
+		fmt.Println("setting logging to level:", level)
+		log.SetLevel(log.ErrorLevel)
 	}
 }
 
