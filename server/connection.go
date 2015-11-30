@@ -27,7 +27,7 @@ type connection struct {
 	egressQueue chan genericJson
 }
 
-func (c *connection) regester() {
+func (c *connection) regester(r *router) {
 }
 
 func (c *connection) work() {

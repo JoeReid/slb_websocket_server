@@ -12,6 +12,7 @@ var upgrader = &websocket.Upgrader{
 }
 
 type wsHandler struct {
+	router *router
 }
 
 func (wsh wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -29,6 +30,6 @@ func (wsh wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		ws:          ws,
 		egressQueue: make(chan genericJson, 256),
 	}
-	c.regester()
+	c.regester(wsh.router)
 	c.work()
 }
