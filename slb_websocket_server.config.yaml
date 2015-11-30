@@ -1,0 +1,8 @@
+server:
+    port: 6543
+    # noGroupAction specifies if a client that subscribes without specifying a
+    # group gets all messages or none. This flag can be specified as 'all' or
+    # 'none'
+    noGroupAction: "none"
+logging:
+    level: "debug"
