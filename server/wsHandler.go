@@ -1,6 +1,9 @@
 package server
 
 import (
+	"github.com/JoeReid/slb_websocket_server/server/router"
+	"github.com/JoeReid/slb_websocket_server/server/schema"
+	"github.com/JoeReid/slb_websocket_server/server/websocketConnection"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"net/http"
@@ -9,10 +12,13 @@ import (
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		return true
+	},
 }
 
 type wsHandler struct {
-	router *router
+	Router *router.Router
 }
 
 func (wsh wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -26,10 +32,14 @@ func (wsh wsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c := &connection{
-		ws:          ws,
-		egressQueue: make(chan genericJson, 256),
+	log.WithFields(log.Fields{
+		"ip": ws.UnderlyingConn().RemoteAddr().String(),
+	}).Debug("New websocket connection")
+
+	c := &websocketConnection.Connection{
+		WS:          ws,
+		EgressQueue: make(chan schema.GenericJson, 256),
 	}
-	c.regester(wsh.router)
-	c.work()
+	c.Regester(wsh.Router)
+	c.Work()
 }

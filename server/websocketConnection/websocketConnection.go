@@ -1,6 +1,9 @@
-package server
+package websocketConnection
 
 import (
+	"fmt"
+	"github.com/JoeReid/slb_websocket_server/server/router"
+	"github.com/JoeReid/slb_websocket_server/server/schema"
 	log "github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 	"sync"
@@ -22,15 +25,19 @@ const (
 	maxMessageSize = 4096
 )
 
-type connection struct {
-	ws          *websocket.Conn
-	egressQueue chan genericJson
+type Connection struct {
+	WS          *websocket.Conn
+	EgressQueue chan schema.GenericJson
 }
 
-func (c *connection) regester(r *router) {
+func (c *Connection) Regester(r *router.Router) {
 }
 
-func (c *connection) work() {
+func (c *Connection) addToEgressQueue(data schema.GenericJson) {
+	c.EgressQueue <- data
+}
+
+func (c *Connection) Work() {
 	var wg sync.WaitGroup
 
 	wg.Add(1)
@@ -42,24 +49,24 @@ func (c *connection) work() {
 	wg.Wait()
 }
 
-func (c *connection) ingressWorker(wg *sync.WaitGroup) {
-	defer c.ws.Close()
+func (c *Connection) ingressWorker(wg *sync.WaitGroup) {
+	defer c.WS.Close()
 	defer wg.Done()
 
 	for {
-		var data genericJson
+		var data schema.GenericJson
 
-		c.ws.SetReadLimit(maxMessageSize)
-		c.ws.SetReadDeadline(time.Now().Add(pongWait))
+		c.WS.SetReadLimit(maxMessageSize)
+		c.WS.SetReadDeadline(time.Now().Add(pongWait))
 
-		c.ws.SetPongHandler(func(string) error {
-			c.ws.SetReadDeadline(time.Now().Add(pongWait))
+		c.WS.SetPongHandler(func(string) error {
+			c.WS.SetReadDeadline(time.Now().Add(pongWait))
 			return nil
 		})
 
-		err := c.ws.ReadJSON(&data)
+		err := c.WS.ReadJSON(&data)
 		if err != nil {
-			ip := c.ws.UnderlyingConn().RemoteAddr().String()
+			ip := c.WS.UnderlyingConn().RemoteAddr().String()
 
 			log.WithFields(log.Fields{
 				"ip":    ip,
@@ -68,11 +75,12 @@ func (c *connection) ingressWorker(wg *sync.WaitGroup) {
 
 			return // defer will Close conn
 		}
+		fmt.Println(data)
 	}
 }
 
-func (c *connection) egressWorker(wg *sync.WaitGroup) {
-	defer c.ws.Close()
+func (c *Connection) egressWorker(wg *sync.WaitGroup) {
+	defer c.WS.Close()
 	defer wg.Done()
 
 	ticker := time.NewTicker(pingPeriod)
@@ -81,7 +89,7 @@ func (c *connection) egressWorker(wg *sync.WaitGroup) {
 	for {
 		select {
 		// If there is data to write
-		case data, ok := <-c.egressQueue:
+		case data, ok := <-c.EgressQueue:
 			if !ok {
 				c.closeWebsocket()
 				return // defer will Close conn
@@ -103,23 +111,23 @@ func (c *connection) egressWorker(wg *sync.WaitGroup) {
 	}
 }
 
-func (c *connection) closeWebsocket() {
-	ip := c.ws.UnderlyingConn().RemoteAddr().String()
+func (c *Connection) closeWebsocket() {
+	ip := c.WS.UnderlyingConn().RemoteAddr().String()
 
 	log.WithFields(log.Fields{
 		"ip": ip,
-	}).Warn("Error egressQueue closed: closing connection")
+	}).Warn("Error EgressQueue closed: closing connection")
 
-	c.ws.SetWriteDeadline(time.Now().Add(writeWait))
-	c.ws.WriteMessage(websocket.CloseMessage, []byte{})
+	c.WS.SetWriteDeadline(time.Now().Add(writeWait))
+	c.WS.WriteMessage(websocket.CloseMessage, []byte{})
 }
 
-func (c *connection) doWrite(data genericJson) bool {
-	c.ws.SetWriteDeadline(time.Now().Add(writeWait))
+func (c *Connection) doWrite(data schema.GenericJson) bool {
+	c.WS.SetWriteDeadline(time.Now().Add(writeWait))
 
-	err := c.ws.WriteJSON(data)
+	err := c.WS.WriteJSON(data)
 	if err != nil {
-		ip := c.ws.UnderlyingConn().RemoteAddr().String()
+		ip := c.WS.UnderlyingConn().RemoteAddr().String()
 
 		log.WithFields(log.Fields{
 			"ip":    ip,
@@ -131,12 +139,12 @@ func (c *connection) doWrite(data genericJson) bool {
 	return true
 }
 
-func (c *connection) doPing() bool {
-	c.ws.SetWriteDeadline(time.Now().Add(writeWait))
+func (c *Connection) doPing() bool {
+	c.WS.SetWriteDeadline(time.Now().Add(writeWait))
 
-	err := c.ws.WriteMessage(websocket.PingMessage, []byte{})
+	err := c.WS.WriteMessage(websocket.PingMessage, []byte{})
 	if err != nil {
-		ip := c.ws.UnderlyingConn().RemoteAddr().String()
+		ip := c.WS.UnderlyingConn().RemoteAddr().String()
 
 		log.WithFields(log.Fields{
 			"ip":    ip,

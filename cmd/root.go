@@ -82,7 +82,8 @@ func initViperDefaults() {
 	// ========================================================================
 	// server
 	// ========================================================================
-	viper.SetDefault("server.port", 8080)
+	viper.SetDefault("server.websocket.port", 8080)
+	viper.SetDefault("server.tcp.port", 8081)
 	// noGroupAction specifies if a client that subscribes without specifying a
 	// group gets all messages or none. This flag can be specified as 'all' or
 	// 'none'

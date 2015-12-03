@@ -1,22 +1,31 @@
-package server
+package router
 
 import (
 	"encoding/json"
+	"github.com/JoeReid/slb_websocket_server/server/schema"
 	log "github.com/Sirupsen/logrus"
 	"sync"
 )
 
-type router struct {
+type Router struct {
 	mutex         *sync.Mutex
-	messageGroups map[string]*connectionPool
-	queue         chan genericJson
+	messageGroups map[string]*Pool
+	queue         chan schema.GenericJson
 }
 
-func (r *router) route(data map[string]*json.RawMessage) {
+func NewRouter() *Router {
+	return &Router{
+		&sync.Mutex{},
+		*new(map[string]*Pool),
+		make(chan schema.GenericJson, 255),
+	}
+}
+
+func (r *Router) route(data map[string]*json.RawMessage) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
-	g, ok := data["group"]
+	g, ok := data["deviceid"]
 	if !ok {
 		log.Error("No group specified in json")
 		return //dont route
@@ -43,7 +52,7 @@ func (r *router) route(data map[string]*json.RawMessage) {
 	pool.send(data)
 }
 
-func (r *router) work() {
+func (r *Router) work() {
 	for {
 		j := <-r.queue
 		if j.Action != "message" {
@@ -58,7 +67,7 @@ func (r *router) work() {
 	}
 }
 
-func (r *router) subscribe(group string, conn *connection) {
+func (r *Router) subscribe(group string, conn *Connection) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 
@@ -66,8 +75,8 @@ func (r *router) subscribe(group string, conn *connection) {
 	if present {
 		pool.add(conn)
 	} else {
-		r.messageGroups[group] = &connectionPool{
-			connections: *new([]*connection),
+		r.messageGroups[group] = &Pool{
+			connections: *new([]*Connection),
 			mutex:       &sync.Mutex{},
 		}
 	}

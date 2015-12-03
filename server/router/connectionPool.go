@@ -1,32 +1,34 @@
-package server
+package router
 
 import (
 	"encoding/json"
+	"github.com/JoeReid/slb_websocket_server/server/schema"
 	"sync"
 )
 
-type connectionPool struct {
-	connections []*connection
+type Pool struct {
+	connections []*Connection
 	mutex       *sync.Mutex
 }
 
-func (c *connectionPool) send(data map[string]*json.RawMessage) {
+func (c *Pool) send(data map[string]*json.RawMessage) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
 	for _, conn := range c.connections {
 		go func() {
-			conn.egressQueue <- genericJson{
+			deref := *conn
+			deref.addToEgressQueue(schema.GenericJson{
 				Action: "message",
 				Data: []map[string]*json.RawMessage{
 					data,
 				},
-			}
+			})
 		}()
 	}
 }
 
-func (c *connectionPool) add(conn *connection) {
+func (c *Pool) add(conn *Connection) {
 	c.mutex.Lock()
 	defer c.mutex.Unlock()
 
