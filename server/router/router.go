@@ -10,7 +10,7 @@ import (
 type Router struct {
 	mutex         *sync.Mutex
 	messageGroups map[string]*Pool
-	queue         chan schema.GenericJson
+	Queue         chan schema.GenericJson
 }
 
 func NewRouter() *Router {
@@ -52,9 +52,9 @@ func (r *Router) route(data map[string]*json.RawMessage) {
 	pool.send(data)
 }
 
-func (r *Router) work() {
+func (r *Router) Work() {
 	for {
-		j := <-r.queue
+		j := <-r.Queue
 		if j.Action != "message" {
 			log.WithFields(log.Fields{
 				"action": j.Action,
@@ -67,7 +67,7 @@ func (r *Router) work() {
 	}
 }
 
-func (r *Router) subscribe(group string, conn *Connection) {
+func (r *Router) Subscribe(group string, conn *Connection) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
 

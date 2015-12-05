@@ -13,6 +13,7 @@ import (
 
 func Run() {
 	r := router.NewRouter()
+	go r.Work()
 	wg := sync.WaitGroup{}
 
 	wg.Add(1)
