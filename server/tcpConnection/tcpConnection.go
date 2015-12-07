@@ -15,37 +15,35 @@ type Connection struct {
 	Conn        net.Conn
 	EgressQueue chan []byte
 	Router      *router.Router
+	ID          int
+}
+
+func (c *Connection) GetID() int {
+	return c.ID
 }
 
 func (c *Connection) Work() {
 	c.Router.Subscribe(c, []string{})
 	wg := sync.WaitGroup{}
-	close := make(chan struct{})
 
 	wg.Add(2)
-	go c.egressWork(&wg, close)
-	go c.ingressWork(&wg, close)
+	go c.egressWork(&wg)
+	go c.ingressWork(&wg)
 
 	wg.Wait()
 }
 
-func (c *Connection) egressWork(wg *sync.WaitGroup, close chan struct{}) {
+func (c *Connection) egressWork(wg *sync.WaitGroup) {
 	for {
-		select {
-		case <-close:
-			log.Debug("egress loop signaled to close")
-			goto stop
-		case out := <-c.EgressQueue:
-			c.Conn.Write(out)
-		}
+		out := <-c.EgressQueue
+		c.Conn.Write(out)
 	}
 
-stop:
 	log.Debug("Egress loop stopped")
 	wg.Done()
 }
 
-func (c *Connection) ingressWork(wg *sync.WaitGroup, close chan struct{}) {
+func (c *Connection) ingressWork(wg *sync.WaitGroup) {
 	for {
 		msg, err := bufio.NewReader(c.Conn).ReadString('\n')
 		if err != nil {
@@ -57,7 +55,6 @@ func (c *Connection) ingressWork(wg *sync.WaitGroup, close chan struct{}) {
 				}).Error("Failed to read from conn... closing conn")
 			}
 
-			close <- struct{}{}
 			break
 		}
 
@@ -65,12 +62,12 @@ func (c *Connection) ingressWork(wg *sync.WaitGroup, close chan struct{}) {
 			"message": msg,
 		}).Debug("new message")
 
-		c.handleMessage([]byte(msg), close)
+		c.handleMessage([]byte(msg))
 	}
 	wg.Done()
 }
 
-func (c *Connection) handleMessage(data []byte, close chan struct{}) {
+func (c *Connection) handleMessage(data []byte) {
 	logger := log.WithFields(log.Fields{
 		"json": string(data),
 	})
@@ -84,7 +81,6 @@ func (c *Connection) handleMessage(data []byte, close chan struct{}) {
 
 	switch {
 	case generic.Action == "message":
-		close <- struct{}{}
 		msg, err := generic.ToMessage()
 		if err != nil {
 			logger.WithFields(log.Fields{
@@ -105,6 +101,16 @@ func (c *Connection) handleMessage(data []byte, close chan struct{}) {
 			c.Router.Queue <- single
 		}
 
+	case generic.Action == "subscribe":
+		msg, err := generic.ToSubscribe()
+		if err != nil {
+			logger.WithFields(log.Fields{
+				"error": err,
+			}).Error("Fail to cast to SubscribeJson")
+			return
+		}
+
+		c.Router.Subscribe(c, msg.Groups)
 	}
 }
 

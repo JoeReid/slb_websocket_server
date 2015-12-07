@@ -16,6 +16,7 @@ func (t *tcpHandler) Handle(conn net.Conn) {
 		Conn:        conn,
 		EgressQueue: make(chan []byte),
 		Router:      t.Router,
+		ID:          router.NextID(),
 	}
 	c.Work()
 	conn.Close()

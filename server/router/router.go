@@ -4,12 +4,24 @@ import (
 	"encoding/json"
 	"github.com/JoeReid/slb_websocket_server/server/schema"
 	log "github.com/Sirupsen/logrus"
+	"sync"
 )
+
+var idCount int = 0
+var idMu *sync.Mutex = &sync.Mutex{}
+
+func NextID() int {
+	idMu.Lock()
+	defer idMu.Unlock()
+
+	idCount++
+	return idCount - 1
+}
 
 func NewRouter() Router {
 	return Router{
 		Queue:   make(chan schema.SingleMessage),
-		Groups:  *new(map[string]ConnectionPool),
+		Groups:  make(map[string]ConnectionPool),
 		NoGroup: NewConnectionPool(),
 	}
 }
@@ -37,14 +49,14 @@ func (r *Router) Subscribe(conn Connection, groups []string) {
 			"group": group,
 		})
 
-		_, ok := r.Groups[group]
+		pool, ok := r.Groups[group]
 		if !ok {
 			groupLogger.Info("creating new group")
 			r.Groups[group] = NewConnectionPool()
+			pool = r.Groups[group]
 		}
-
-		pool := r.Groups[group]
 		pool.AddConnection(conn)
+
 	}
 }
 
@@ -72,12 +84,12 @@ func (r *Router) handle(msg schema.SingleMessage) {
 	}
 
 	//send to the unsubscribed channels
-	go r.NoGroup.Send(marshaled)
+	go r.NoGroup.Send(marshaled, msg.ConnectionID)
 
 	if msg.Group == "" {
 		// send to all
 		for _, v := range r.Groups {
-			go v.Send(marshaled)
+			go v.Send(marshaled, msg.ConnectionID)
 		}
 		return
 	}
@@ -90,5 +102,5 @@ func (r *Router) handle(msg schema.SingleMessage) {
 		return
 	}
 
-	go cp.Send(marshaled)
+	go cp.Send(marshaled, msg.ConnectionID)
 }

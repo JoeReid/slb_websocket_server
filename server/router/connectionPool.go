@@ -39,9 +39,11 @@ func (c *ConnectionPool) DeleteConnection(conn Connection) error {
 	return nil
 }
 
-func (c *ConnectionPool) Send(msg []byte) {
+func (c *ConnectionPool) Send(msg []byte, excludeID int) {
 	send := func(conn Connection) {
-		conn.Send(msg)
+		if excludeID != conn.GetID() {
+			conn.Send(msg)
+		}
 		// maybe cleanup closed conns here later
 	}
 

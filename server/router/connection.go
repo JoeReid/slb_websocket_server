@@ -7,4 +7,5 @@ import (
 type Connection interface {
 	Send(msg []byte)
 	Work()
+	GetID() int
 }

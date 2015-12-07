@@ -48,6 +48,7 @@ func (m *MessageJson) ToMessageArray() ([]SingleMessage, error) {
 type SingleMessage struct {
 	Group        string
 	WholeMessage map[string]*json.RawMessage
+	ConnectionID int
 }
 
 type SubscribeJson struct {
@@ -80,7 +81,7 @@ func (g *GenericJson) ToSubscribe() (SubscribeJson, error) {
 		return rtn, NotSubscribeError
 	}
 
-	err := json.Unmarshal(*g.Data, &rtn)
+	err := json.Unmarshal(*g.Data, &rtn.Groups)
 	if err != nil {
 		return rtn, err
 	}
