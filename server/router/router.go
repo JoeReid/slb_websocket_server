@@ -57,11 +57,11 @@ func (r *Router) Route() {
 
 func (r *Router) handle(msg schema.SingleMessage) {
 	toMarshal := struct {
-		Action string                      `json:"action"`
-		Data   map[string]*json.RawMessage `json:"data"`
+		Action string                        `json:"action"`
+		Data   []map[string]*json.RawMessage `json:"data"`
 	}{
 		"message",
-		msg.WholeMessage,
+		[]map[string]*json.RawMessage{msg.WholeMessage},
 	}
 
 	marshaled, err := json.Marshal(toMarshal)

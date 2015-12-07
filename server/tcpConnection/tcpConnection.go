@@ -33,11 +33,15 @@ func (c *Connection) egressWork(wg *sync.WaitGroup, close chan struct{}) {
 	for {
 		select {
 		case <-close:
-			break
+			log.Debug("egress loop signaled to close")
+			goto stop
 		case out := <-c.EgressQueue:
 			c.Conn.Write(out)
 		}
 	}
+
+stop:
+	log.Debug("Egress loop stopped")
 	wg.Done()
 }
 
@@ -61,12 +65,12 @@ func (c *Connection) ingressWork(wg *sync.WaitGroup, close chan struct{}) {
 			"message": msg,
 		}).Debug("new message")
 
-		c.handleMessage([]byte(msg))
+		c.handleMessage([]byte(msg), close)
 	}
 	wg.Done()
 }
 
-func (c *Connection) handleMessage(data []byte) {
+func (c *Connection) handleMessage(data []byte, close chan struct{}) {
 	logger := log.WithFields(log.Fields{
 		"json": string(data),
 	})
@@ -80,6 +84,7 @@ func (c *Connection) handleMessage(data []byte) {
 
 	switch {
 	case generic.Action == "message":
+		close <- struct{}{}
 		msg, err := generic.ToMessage()
 		if err != nil {
 			logger.WithFields(log.Fields{
