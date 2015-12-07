@@ -20,19 +20,32 @@ type Router struct {
 	NoGroup ConnectionPool
 }
 
-func (r *Router) Subscribe(conn Connection, group string) {
-	if group == "" {
+func (r *Router) Subscribe(conn Connection, groups []string) {
+	log.WithFields(log.Fields{
+		"groups": groups,
+	}).Debug("new subscriber")
+
+	if len(groups) == 0 {
 		r.NoGroup.AddConnection(conn)
 		return
 	}
 
 	r.NoGroup.DeleteConnection(conn)
-	_, ok := r.Groups[group]
-	if !ok {
-		r.Groups[group] = NewConnectionPool()
+
+	for _, group := range groups {
+		groupLogger := log.WithFields(log.Fields{
+			"group": group,
+		})
+
+		_, ok := r.Groups[group]
+		if !ok {
+			groupLogger.Info("creating new group")
+			r.Groups[group] = NewConnectionPool()
+		}
+
+		pool := r.Groups[group]
+		pool.AddConnection(conn)
 	}
-	pool := r.Groups[group]
-	pool.AddConnection(conn)
 }
 
 func (r *Router) Route() {

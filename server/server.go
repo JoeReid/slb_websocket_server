@@ -51,7 +51,7 @@ func startTCP(wg *sync.WaitGroup, r *router.Router) {
 				"error": err,
 			}).Panic("TCP Accept error")
 		}
-		go handle.Handle(&conn)
+		go handle.Handle(conn)
 	}
 
 	wg.Done()

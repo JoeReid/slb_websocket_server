@@ -11,13 +11,12 @@ type tcpHandler struct {
 	Router *router.Router
 }
 
-func (t *tcpHandler) Handle(conn *net.Conn) {
+func (t *tcpHandler) Handle(conn net.Conn) {
 	c := &tcpConnection.Connection{
 		Conn:        conn,
 		EgressQueue: make(chan []byte),
 		Router:      t.Router,
 	}
 	c.Work()
-	cn := *c.Conn
-	cn.Close()
+	conn.Close()
 }

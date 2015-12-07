@@ -66,7 +66,7 @@ func (g *GenericJson) ToMessage() (MessageJson, error) {
 		return rtn, NotMessageError
 	}
 
-	err := json.Unmarshal(*g.Data, &rtn)
+	err := json.Unmarshal(*g.Data, &rtn.Messages)
 	if err != nil {
 		return rtn, err
 	}
