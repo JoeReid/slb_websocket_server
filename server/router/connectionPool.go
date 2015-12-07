@@ -2,7 +2,6 @@ package router
 
 import (
 	"errors"
-	"github.com/JoeReid/slb_websocket_server/server/schema"
 )
 
 var (
@@ -10,11 +9,17 @@ var (
 	ConnectionAlreadyInPoolError = errors.New("Connection already in pool")
 )
 
-type ConnectionPool struct {
-	Connections map[*Connection]bool
+func NewConnectionPool() ConnectionPool {
+	return ConnectionPool{
+		make(map[Connection]bool),
+	}
 }
 
-func (c *ConnectionPool) AddConnection(conn *Connection) error {
+type ConnectionPool struct {
+	Connections map[Connection]bool
+}
+
+func (c *ConnectionPool) AddConnection(conn Connection) error {
 	_, exists := c.Connections[conn]
 	if exists {
 		return ConnectionAlreadyInPoolError
@@ -24,7 +29,7 @@ func (c *ConnectionPool) AddConnection(conn *Connection) error {
 	return nil
 }
 
-func (c *ConnectionPool) DeleteConnection(conn *Connection) error {
+func (c *ConnectionPool) DeleteConnection(conn Connection) error {
 	_, exists := c.Connections[conn]
 	if !exists {
 		return ConnectionNotInPoolError
@@ -34,8 +39,8 @@ func (c *ConnectionPool) DeleteConnection(conn *Connection) error {
 	return nil
 }
 
-func (c *ConnectionPool) Send(msg schema.SingleMessage) {
-	send := func(conn *Connection) {
+func (c *ConnectionPool) Send(msg []byte) {
+	send := func(conn Connection) {
 		conn.Send(msg)
 		// maybe cleanup closed conns here later
 	}
